@@ -6,20 +6,20 @@ pub struct TraceResponse(pub(crate) Response, pub(crate) Span);
 
 impl TraceResponse {
     pub async fn bytes(self) -> Result<bytes::Bytes> {
-        self.bytes_imp(true).await.map(|(v, _headers)| v)
+        self.bytes_imp(true).await.map(|(v, _headers, _span)| v)
     }
 
-    async fn bytes_imp(self, log_success: bool) -> Result<(bytes::Bytes, HeadersRepr)> {
+    async fn bytes_imp(self, log_success: bool) -> Result<(bytes::Bytes, HeadersRepr, Span)> {
         let headers = headers_repr(self.0.headers());
         let span = self.1;
 
         match self.0.bytes().instrument(span.clone()).await {
             Ok(v) => {
                 if log_success {
-                    trace!(parent: span, headers = headers, size = v.len(),);
+                    trace!(parent: span.clone(), headers = headers, size = v.len(),);
                 }
 
-                Ok((v, headers))
+                Ok((v, headers, span))
             }
             Err(e) => {
                 span.record("error", true);
@@ -64,33 +64,39 @@ impl TraceResponse {
     #[cfg(feature = "json")]
     pub async fn json<T: serde::de::DeserializeOwned>(self) -> Result<T> {
         use crate::utils::text_repr;
+        use bytes::Bytes;
 
-        let span = self.1.clone();
-        let (full, headers) = self.bytes_imp(false).await?;
+        let (full, headers, span) = self.bytes_imp(false).await?;
+
+        fn trace_ok(span: Span, headers: String, bytes: Bytes) {
+            trace!(
+                parent: span,
+                headers = headers,
+                size = bytes.len(),
+                text = %text_repr(&bytes)
+            );
+        }
+
+        fn trace_err(span: Span, headers: String, bytes: Bytes, error: serde_json::Error) -> Error {
+            span.record("error", true);
+            span.record("error_description", error.to_string());
+
+            error!(
+                parent: span,
+                headers = headers,
+                size = bytes.len(),
+                text = %text_repr(&bytes)
+            );
+
+            Error::Json(error)
+        }
 
         match serde_json::from_slice::<T>(&full) {
             Ok(v) => {
-                trace!(
-                    parent: span,
-                    headers = headers,
-                    size = full.len(),
-                    text = %text_repr(&full)
-                );
+                trace_ok(span, headers, full);
                 Ok(v)
             }
-            Err(e) => {
-                span.record("error", true);
-                span.record("error_description", e.to_string());
-
-                error!(
-                    parent: span,
-                    headers = headers,
-                    size = full.len(),
-                    text = %text_repr(&full)
-                );
-
-                Err(Error::Json(e))
-            }
+            Err(e) => Err(trace_err(span, headers, full, e)),
         }
     }
 
