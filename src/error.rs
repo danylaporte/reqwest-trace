@@ -19,7 +19,7 @@ impl Error {
     pub fn is_request(&self) -> bool {
         match self {
             #[cfg(feature = "json")]
-            Json(_) => false,
+            Self::Json(_) => false,
             Self::Reqwest(r) => r.is_request(),
             Self::StatusError(s) => s.is_client_error(),
         }
@@ -28,7 +28,7 @@ impl Error {
     pub fn is_status(&self) -> bool {
         match self {
             #[cfg(feature = "json")]
-            Json(_) => false,
+            Self::Json(_) => false,
             Self::Reqwest(r) => r.is_status(),
             Self::StatusError(_) => true,
         }
@@ -44,7 +44,7 @@ impl Error {
     pub fn status(&self) -> Option<StatusCode> {
         match self {
             #[cfg(feature = "json")]
-            Json(_) => None,
+            Self::Json(_) => None,
             Self::Reqwest(r) => r.status(),
             Self::StatusError(c) => Some(*c),
         }
