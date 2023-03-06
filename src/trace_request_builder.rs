@@ -6,6 +6,7 @@ use reqwest::{
 };
 use serde::Serialize;
 use std::{fmt::Display, time::Duration};
+use tracing::{trace, warn};
 
 pub struct TraceRequestBuilder(pub RequestBuilder);
 
@@ -67,6 +68,47 @@ impl TraceRequestBuilder {
     pub async fn send(self) -> Result<TraceResponse> {
         let req = self.0.build().map_err(Error::Reqwest)?;
         TraceClient::new().execute(req).await
+    }
+
+    /// Retry if there is a Duration.
+    pub async fn send_and_retry_one(self, retry_if: Option<Duration>) -> Result<TraceResponse> {
+        let req = self.0.build().map_err(Error::Reqwest)?;
+        let mut retry = None;
+
+        if let Some(duration) = retry_if {
+            match req.try_clone() {
+                Some(req) => retry = Some((duration, req)),
+                None => {
+                    warn!("No retry possible on streaming request.");
+                }
+            }
+        }
+
+        let client = TraceClient::new();
+
+        match client.execute(req).await {
+            Ok(r) => Ok(r),
+            Err(e) => {
+                if let Some((duration, req)) = retry {
+                    if e.is_connect()
+                        || e.is_timeout()
+                        || e.status().map_or(false, |s| s.is_server_error())
+                    {
+                        if !duration.is_zero() {
+                            trace!("sleeping before retry.");
+                            tokio::time::sleep(duration).await;
+                        }
+
+                        trace!("retry");
+                        client.execute(req).await
+                    } else {
+                        Err(e)
+                    }
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     pub fn timeout(self, timeout: Duration) -> Self {

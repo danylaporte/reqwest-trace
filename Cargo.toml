@@ -9,6 +9,7 @@ http = "0.2"
 reqwest = "0.11"
 serde = "1"
 serde_json = { version = "1", optional = true }
+tokio = { version = "1", default_features = false, features = ["time"] }
 tracing = "0.1"
 
 [dev-dependencies]

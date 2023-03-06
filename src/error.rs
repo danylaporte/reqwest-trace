@@ -8,6 +8,49 @@ pub enum Error {
     StatusError(StatusCode),
 }
 
+impl Error {
+    pub fn is_connect(&self) -> bool {
+        match self {
+            Self::Reqwest(r) => r.is_connect(),
+            _ => false,
+        }
+    }
+
+    pub fn is_request(&self) -> bool {
+        match self {
+            #[cfg(feature = "json")]
+            Json(_) => false,
+            Self::Reqwest(r) => r.is_request(),
+            Self::StatusError(s) => s.is_client_error(),
+        }
+    }
+
+    pub fn is_status(&self) -> bool {
+        match self {
+            #[cfg(feature = "json")]
+            Json(_) => false,
+            Self::Reqwest(r) => r.is_status(),
+            Self::StatusError(_) => true,
+        }
+    }
+
+    pub fn is_timeout(&self) -> bool {
+        match self {
+            Self::Reqwest(r) => r.is_timeout(),
+            _ => false,
+        }
+    }
+
+    pub fn status(&self) -> Option<StatusCode> {
+        match self {
+            #[cfg(feature = "json")]
+            Json(_) => None,
+            Self::Reqwest(r) => r.status(),
+            Self::StatusError(c) => Some(*c),
+        }
+    }
+}
+
 impl Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
