@@ -16,7 +16,7 @@ impl TraceResponse {
         match self.0.bytes().instrument(span.clone()).await {
             Ok(v) => {
                 if log_success {
-                    trace!(parent: span.clone(), headers = headers, size = v.len(),);
+                    span.in_scope(|| trace!(headers = headers, size = v.len(), "bytes"));
                 }
 
                 Ok((v, headers, span))
@@ -24,8 +24,7 @@ impl TraceResponse {
             Err(e) => {
                 span.record("error", true);
                 span.record("error_message", e.to_string());
-
-                error!(parent: span, res_headers = headers);
+                span.in_scope(|| error!(res_headers = headers, "bytes"));
 
                 Err(Error::Reqwest(e))
             }
@@ -40,13 +39,12 @@ impl TraceResponse {
         } else {
             let span = self.1;
 
+            span.in_scope(|| error!(headers = headers_repr(self.0.headers())));
             span.record("error", true);
-            error!(parent: span.clone(), headers = headers_repr(self.0.headers()));
 
             match self.0.text().instrument(span.clone()).await {
                 Ok(t) => {
                     span.record("error_message", t.chars().take(1024).collect::<String>());
-
                     Err(Error::StatusError(status))
                 }
                 Err(e) => {
@@ -69,24 +67,28 @@ impl TraceResponse {
         let (full, headers, span) = self.bytes_imp(false).await?;
 
         fn trace_ok(span: Span, headers: String, bytes: Bytes) {
-            trace!(
-                parent: span,
-                headers = headers,
-                size = bytes.len(),
-                text = %text_repr(&bytes)
-            );
+            span.in_scope(|| {
+                trace!(
+                    headers = headers,
+                    size = bytes.len(),
+                    text = %text_repr(&bytes),
+                    "json"
+                )
+            });
         }
 
         fn trace_err(span: Span, headers: String, bytes: Bytes, error: serde_json::Error) -> Error {
             span.record("error", true);
             span.record("error_description", error.to_string());
 
-            error!(
-                parent: span,
-                headers = headers,
-                size = bytes.len(),
-                text = %text_repr(&bytes)
-            );
+            span.in_scope(|| {
+                error!(
+                    headers = headers,
+                    size = bytes.len(),
+                    text = %text_repr(&bytes),
+                    "json"
+                )
+            });
 
             Error::Json(error)
         }
@@ -119,20 +121,21 @@ impl TraceResponse {
             .await
         {
             Ok(v) => {
-                trace!(
-                    parent: span,
-                    headers = headers,
-                    size = v.len(),
-                    text = v.chars().take(256).collect::<String>(),
-                );
+                span.in_scope(|| {
+                    trace!(
+                        headers = headers,
+                        size = v.len(),
+                        text = v.chars().take(256).collect::<String>(),
+                        "text"
+                    );
+                });
 
                 Ok(v)
             }
             Err(e) => {
                 span.record("error", true);
                 span.record("error_description", e.to_string());
-
-                error!(parent: span, headers = headers);
+                span.in_scope(|| error!(headers = headers, "text"));
 
                 Err(Error::Reqwest(e))
             }

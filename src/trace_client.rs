@@ -28,18 +28,19 @@ impl TraceClient {
             url = req.url().as_str(),
         );
 
-        trace!(
-            parent: span.clone(),
-            body = %match req.body() {
-                Some(body) => match body.as_bytes() {
-                    Some(bytes) => text_repr(bytes),
-                    None => Cow::Borrowed("<streaming>"),
+        span.in_scope(|| {
+            trace!(
+                body = %match req.body() {
+                    Some(body) => match body.as_bytes() {
+                        Some(bytes) => text_repr(bytes),
+                        None => Cow::Borrowed("<streaming>"),
+                    },
+                    None => Cow::Borrowed("<none>"),
                 },
-                None => Cow::Borrowed("<none>"),
-            },
-            headers = headers_repr(req.headers()),
-            version = ?req.version(),
-        );
+                headers = headers_repr(req.headers()),
+                version = ?req.version(),
+            );
+        });
 
         match self.0.execute(req).instrument(span.clone()).await {
             Ok(res) => {

@@ -34,5 +34,7 @@ fn take_only_n_bytes(b: &[u8], count: usize) -> &[u8] {
 
 /// Attempt to convert a buffer to a string representation for tracing.
 pub fn text_repr(bytes: &[u8]) -> Cow<str> {
-    String::from_utf8_lossy(take_only_n_bytes(strip_utf8_bom(bytes), 2048))
+    const KB: usize = 1024;
+
+    String::from_utf8_lossy(take_only_n_bytes(strip_utf8_bom(bytes), 30 * KB))
 }
