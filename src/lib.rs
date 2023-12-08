@@ -25,7 +25,9 @@ mod trace_response;
 mod utils;
 
 pub use error::{Error, Result};
-pub use reqwest::{self, header, StatusCode};
+#[cfg(feature = "multipart")]
+pub use reqwest::multipart;
+pub use reqwest::{self, header, Body, IntoUrl, Method, StatusCode, Version};
 pub use trace_client::TraceClient;
 pub use trace_request_builder::TraceRequestBuilder;
 pub use trace_response::TraceResponse;
