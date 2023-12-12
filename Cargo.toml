@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+async-cell-lock = { git = "https://github.com/danylaporte/async-cell-lock.git", optional = true }
 bytes = "1"
 http = "0.2"
 reqwest = "0.11"
@@ -18,6 +19,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tracing-test = {version = "0.2", features = ["no-env-filter"] }
 
 [features]
+async-cell-lock-detect = ["async-cell-lock"]
 default = []
 json = ["serde_json", "reqwest/json"]
 multipart = ["reqwest/multipart"]
