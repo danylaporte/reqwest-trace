@@ -19,8 +19,7 @@ impl TraceClient {
     }
 
     pub async fn execute(&self, req: Request) -> Result<TraceResponse> {
-        #[cfg(feature = "async-cell-lock-detect")]
-        async_cell_lock::warn_lock_held();
+        warn_lock_held();
        
         let span = info_span!(
             "reqwest",
@@ -87,4 +86,13 @@ impl Default for TraceClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[cfg(feature = "async-cell-lock-detect")]
+fn warn_lock_held() {
+    async_cell_lock::warn_lock_held();
+}
+
+#[cfg(not(feature = "async-cell-lock-detect"))]
+fn warn_lock_held() {
 }
