@@ -8,6 +8,7 @@ publish = false
 async-cell-lock = { git = "https://github.com/danylaporte/async-cell-lock.git", optional = true }
 bytes = "1"
 http = "0.2"
+metrics = { version = "0.22", optional = true }
 reqwest = "0.11"
 serde = "1"
 serde_json = { version = "1", optional = true }
@@ -23,3 +24,4 @@ async-cell-lock-detect = ["async-cell-lock"]
 default = []
 json = ["serde_json", "reqwest/json"]
 multipart = ["reqwest/multipart"]
+telemetry = ["async-cell-lock/telemetry", "metrics"]
