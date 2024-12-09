@@ -12,7 +12,7 @@ metrics = { version = "0.22", optional = true }
 reqwest = "0.11"
 serde = "1"
 serde_json = { version = "1", optional = true }
-tokio = { version = "1", default_features = false, features = ["time"] }
+tokio = { version = "1", default-features = false, features = ["time"] }
 tracing = "0.1"
 
 [dev-dependencies]
@@ -20,7 +20,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tracing-test = {version = "0.2", features = ["no-env-filter"] }
 
 [features]
-async-cell-lock-detect = ["async-cell-lock"]
+async-cell-lock-detect = ["async-cell-lock", "telemetry"]
 default = []
 json = ["serde_json", "reqwest/json"]
 multipart = ["reqwest/multipart"]
