@@ -20,6 +20,7 @@
 
 mod error;
 mod trace_client;
+mod trace_client_builder;
 mod trace_request_builder;
 mod trace_response;
 mod utils;
@@ -29,6 +30,7 @@ pub use error::{Error, Result};
 pub use reqwest::multipart;
 pub use reqwest::{self, header, Body, IntoUrl, Method, StatusCode, Version};
 pub use trace_client::TraceClient;
+pub use trace_client_builder::TraceClientBuilder;
 pub use trace_request_builder::TraceRequestBuilder;
 pub use trace_response::TraceResponse;
 
