@@ -66,13 +66,17 @@ impl TraceRequestBuilder {
     }
 
     pub async fn send(self) -> Result<TraceResponse> {
-        let req = self.0.build().map_err(Error::Reqwest)?;
-        TraceClient::new().execute(req).await
+        let (client, req_result) = self.0.build_split();
+        let req = req_result.map_err(Error::Reqwest)?;
+
+        TraceClient(client).execute(req).await
     }
 
     /// Retry if there is a Duration.
     pub async fn send_and_retry_one(self, retry_if: Option<Duration>) -> Result<TraceResponse> {
-        let req = self.0.build().map_err(Error::Reqwest)?;
+        let (client, req_result) = self.0.build_split();
+        let req = req_result.map_err(Error::Reqwest)?;
+
         let mut retry = None;
 
         if let Some(duration) = retry_if {
@@ -84,7 +88,7 @@ impl TraceRequestBuilder {
             }
         }
 
-        let client = TraceClient::new();
+        let client = TraceClient(client);
 
         match client.execute(req).await {
             Ok(r) => Ok(r),
