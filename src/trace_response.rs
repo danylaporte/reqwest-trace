@@ -23,7 +23,7 @@ impl TraceResponse {
             }
             Err(e) => {
                 span.record("error", true);
-                span.record("error_message", e.to_string());
+                span.record("error_description", e.to_string());
                 span.in_scope(|| error!(res_headers = headers, "bytes"));
 
                 Err(Error::Reqwest(e))
@@ -44,11 +44,14 @@ impl TraceResponse {
 
             match self.0.text().instrument(span.clone()).await {
                 Ok(t) => {
-                    span.record("error_message", t.chars().take(1024).collect::<String>());
+                    span.record(
+                        "error_description",
+                        t.chars().take(1024).collect::<String>(),
+                    );
                     Err(Error::StatusError(status))
                 }
                 Err(e) => {
-                    span.record("error_message", e.to_string());
+                    span.record("error_description", e.to_string());
                     Err(Error::Reqwest(e))
                 }
             }
