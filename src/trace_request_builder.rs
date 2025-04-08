@@ -6,7 +6,8 @@ use reqwest::{
 };
 use serde::Serialize;
 use std::{fmt::Display, time::Duration};
-use tracing::{trace, warn};
+use tokio::time::sleep;
+use tracing::{error, info, trace, warn};
 
 pub struct TraceRequestBuilder(pub RequestBuilder);
 
@@ -72,6 +73,41 @@ impl TraceRequestBuilder {
         TraceClient(client).execute(req).await
     }
 
+    pub async fn send_and_retry(self, args: RetryArgs) -> Result<TraceResponse> {
+        async fn send(req: TraceRequestBuilder) -> Result<TraceResponse> {
+            req.send().await?.error_for_status().await
+        }
+
+        let mut count = 0;
+
+        loop {
+            return match self.try_clone() {
+                Some(c) => {
+                    let r = send(c).await;
+
+                    if let Err(e) = r.as_ref() {
+                        if count < args.count
+                            && (e.is_connect()
+                                || e.is_timeout()
+                                || e.status().is_none_or(|s| s.is_server_error()))
+                        {
+                            error!("{e}");
+                            info!("retry in {}s", args.sleep_before_retry.as_secs());
+
+                            sleep(args.sleep_before_retry).await;
+
+                            count += 1;
+                            continue;
+                        }
+                    }
+
+                    r
+                }
+                None => send(self).await,
+            };
+        }
+    }
+
     /// Retry if there is a Duration.
     pub async fn send_and_retry_one(self, retry_if: Option<Duration>) -> Result<TraceResponse> {
         let (client, req_result) = self.0.build_split();
@@ -96,7 +132,7 @@ impl TraceRequestBuilder {
                 if let Some((duration, req)) = retry {
                     if e.is_connect()
                         || e.is_timeout()
-                        || e.status().map_or(false, |s| s.is_server_error())
+                        || e.status().is_some_and(|s| s.is_server_error())
                     {
                         if !duration.is_zero() {
                             trace!("sleeping before retry.");
@@ -131,5 +167,31 @@ impl TraceRequestBuilder {
 impl From<RequestBuilder> for TraceRequestBuilder {
     fn from(b: RequestBuilder) -> Self {
         Self(b)
+    }
+}
+
+pub struct RetryArgs {
+    count: usize,
+    sleep_before_retry: Duration,
+}
+
+impl RetryArgs {
+    pub fn set_count(mut self, val: usize) -> Self {
+        self.count = val;
+        self
+    }
+
+    pub fn set_sleep_before_retry(mut self, val: Duration) -> Self {
+        self.sleep_before_retry = val;
+        self
+    }
+}
+
+impl Default for RetryArgs {
+    fn default() -> Self {
+        Self {
+            count: 3,
+            sleep_before_retry: Duration::from_secs(30),
+        }
     }
 }
