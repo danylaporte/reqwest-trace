@@ -1,5 +1,5 @@
 use crate::{trace_client::TraceClient, Error, Result, TraceResponse};
-use http::{HeaderMap, Version};
+use http::{HeaderMap, StatusCode, Version};
 use reqwest::{
     header::{HeaderName, HeaderValue},
     Body, RequestBuilder,
@@ -89,7 +89,9 @@ impl TraceRequestBuilder {
                         if count < args.count
                             && (e.is_connect()
                                 || e.is_timeout()
-                                || e.status().is_none_or(|s| s.is_server_error()))
+                                || e.status().is_none_or(|s| {
+                                    s.is_server_error() || s == StatusCode::TOO_MANY_REQUESTS
+                                }))
                         {
                             error!("{e}");
                             info!("retry in {}s", args.sleep_before_retry.as_secs());
