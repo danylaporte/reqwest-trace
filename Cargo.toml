@@ -6,18 +6,18 @@ publish = false
 
 [dependencies]
 async-cell-lock = { git = "https://github.com/danylaporte/async-cell-lock.git", optional = true }
-bytes = "1"
-http = "0.2"
+bytes = "1.11.1"
+http = "1.4.0"
 metrics = { version = "0.22", optional = true }
-reqwest = "0.11"
-serde = "1"
-serde_json = { version = "1", optional = true }
-tokio = { version = "1", default-features = false, features = ["time"] }
-tracing = "0.1"
+reqwest = { version = "0.13.2", features = ["form", "query"] }
+serde = "1.0.228"
+serde_json = { version = "1.0.149", optional = true }
+tokio = { version = "1.52.0", default-features = false, features = ["time"] }
+tracing = "0.1.44"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-tracing-test = {version = "0.2", features = ["no-env-filter"] }
+tracing-test = {version = "0.2.6", features = ["no-env-filter"] }
 
 [features]
 async-cell-lock-detect = ["async-cell-lock", "telemetry"]
