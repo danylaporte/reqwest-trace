@@ -3,7 +3,7 @@ use crate::{
     utils::{headers_repr, text_repr},
     Result, TraceResponse,
 };
-use reqwest::{Client, IntoUrl, Method, Request};
+use reqwest::{Client, ClientBuilder, IntoUrl, Method, Request};
 use std::borrow::Cow;
 use tracing::{field::Empty, info_span, trace, Instrument};
 
@@ -11,7 +11,17 @@ pub struct TraceClient(pub Client);
 
 impl TraceClient {
     pub fn new() -> Self {
-        Self(Client::new())
+        let client = ClientBuilder::new()
+            .tls_backend_native()
+            .build()
+            .unwrap_or_else(|e| {
+                tracing::warn!(
+                    "TraceClient native TLS init failed, using reqwest default client. {e}"
+                );
+                Client::new()
+            });
+
+        Self(client)
     }
 
     pub fn delete<U: IntoUrl>(&self, url: U) -> TraceRequestBuilder {
